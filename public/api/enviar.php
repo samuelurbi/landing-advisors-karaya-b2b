@@ -5,7 +5,8 @@
 // FUERA de public_html: domains/<dominio>/config.php (plantilla: config.example.php).
 //
 // Flujo: POST JSON → antispam (campo trampa, tiempo mínimo, límite por IP con hash) → validación
-// igual que en el cliente → fila en la tabla `envios` (MySQL, schema.sql) → aviso por SMTP.
+// igual que en el cliente → fila en la tabla `envios` (MySQL, schema.sql: la misma tabla que la web
+// principal, karayapuntacana.com) → aviso por SMTP → `correo` = 1 (avisado) o 0 (falló el aviso).
 // Si falla el guardado o el aviso, responde error: la web enseña la salida por WhatsApp; nunca
 // un «enviado» falso.
 declare(strict_types=1);
@@ -91,17 +92,26 @@ try {
 $sitio = (string) $reglas['sitio'];
 $ipHash = hash_hmac('sha256', (string) ($_SERVER['REMOTE_ADDR'] ?? ''), (string) $cfg['sal']);
 $limite = $cfg['limite'] ?? ['envios' => 5, 'minutos' => 10];
-try {
+$contar = static function () use ($pdo, $ipHash, $sitio, $limite): bool {
     $pdo->exec('DELETE FROM envios_limite WHERE creado < NOW() - INTERVAL 1 DAY');
     $q = $pdo->prepare('SELECT COUNT(*) FROM envios_limite WHERE ip_hash = ? AND creado > NOW() - INTERVAL ? MINUTE');
     $q->execute([$ipHash, (int) $limite['minutos']]);
-    if ((int) $q->fetchColumn() >= (int) $limite['envios']) {
-        responder(429, ['ok' => false, 'error' => 'limite']);
-    }
+    if ((int) $q->fetchColumn() >= (int) $limite['envios']) return false;
     $pdo->prepare('INSERT INTO envios_limite (ip_hash, sitio) VALUES (?, ?)')->execute([$ipHash, $sitio]);
+    return true;
+};
+try {
+    try {
+        $dentro = $contar();
+    } catch (PDOException $e) {
+        // Si solo se importó el schema.sql de la web principal (sin esta tabla), se crea aquí.
+        $pdo->exec('CREATE TABLE IF NOT EXISTS envios_limite (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, ip_hash CHAR(64) NOT NULL, sitio VARCHAR(80) NOT NULL, creado TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), KEY envios_limite_ip (ip_hash, creado)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+        $dentro = $contar();
+    }
+    if (!$dentro) responder(429, ['ok' => false, 'error' => 'limite']);
 } catch (Throwable $e) {
-    registrar('límite por IP: ' . $e->getMessage());
-    responder(500, ['ok' => false, 'error' => 'servidor']);
+    // El antispam no debe tumbar el formulario: se apunta en el log y se sigue sin límite.
+    registrar('límite por IP (se sigue sin él): ' . $e->getMessage());
 }
 
 // --- Validación (la misma que en el cliente) ---------------------------------------------------
@@ -154,15 +164,18 @@ foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
     $v = $txt($in['utm'][$k] ?? '', 200);
     if ($v !== '') $utm[$k] = $v;
 }
-$origen = array_filter(['pagina' => $txt($in['pagina'] ?? '', 500), 'referrer' => $txt($in['referrer'] ?? '', 500)]);
-$idioma = $txt($in['idioma'] ?? ($reglas['idioma'] ?? 'en'), 12);
-$ua = $txt($_SERVER['HTTP_USER_AGENT'] ?? '', 500);
+$referrer = $txt($in['referrer'] ?? '', 300);
+if ($referrer !== '') $utm['referrer'] = $referrer;
+// `origen` (VARCHAR 200 en el schema común): la página de entrada del envío.
+$origen = $txt($in['pagina'] ?? '', 200);
+$idioma = $txt($in['idioma'] ?? ($reglas['idioma'] ?? 'en'), 5);
+$ua = $txt($_SERVER['HTTP_USER_AGENT'] ?? '', 300);
 $json = static fn($v) => json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 try {
     $pdo->prepare(
         'INSERT INTO envios (sitio, formulario, idioma, datos, consentimiento, utm, origen, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    )->execute([$sitio, (string) $reglas['formulario'], $idioma, $json($datos), $json($consentimiento), $utm ? $json($utm) : null, $origen ? $json($origen) : null, $ua]);
+    )->execute([$sitio, (string) $reglas['formulario'], $idioma, $json($datos), $json($consentimiento), $utm ? $json($utm) : null, $origen !== '' ? $origen : null, $ua]);
     $id = (int) $pdo->lastInsertId();
 } catch (Throwable $e) {
     registrar('INSERT envios: ' . $e->getMessage());
@@ -184,7 +197,9 @@ foreach ($reglas['campos'] as $k => $r) {
     $filas .= '<tr><td style="padding:6px 12px 6px 0;color:#555;vertical-align:top;white-space:nowrap">' . $e($r['etiqueta']) . '</td><td style="padding:6px 0;white-space:pre-wrap">' . $e($v) . '</td></tr>';
     $texto .= $r['etiqueta'] . ': ' . $v . "\n";
 }
-$extra = 'Consentimiento: sí, ' . $ahora . "\n" . ($utm ? 'UTM: ' . http_build_query($utm, '', ', ') . "\n" : '') . ($origen ? 'Página: ' . ($origen['pagina'] ?? '') . ($origen['referrer'] ?? '' ? ' · desde ' . $origen['referrer'] : '') . "\n" : '');
+$extra = 'Consentimiento: sí, ' . $ahora . "\n"
+    . ($origen !== '' ? 'Página: ' . $origen . "\n" : '')
+    . ($utm ? 'Origen: ' . urldecode(http_build_query($utm, '', ', ')) . "\n" : '');
 $html = '<div style="font:15px/1.5 Arial,sans-serif;color:#111"><p style="margin:0 0 12px"><b>' . $e($reglas['nombreWeb']) . '</b> · formulario «' . $e($reglas['formulario']) . '» · envío #' . $id . '</p><table style="border-collapse:collapse">' . $filas . '</table><p style="margin:16px 0 0;color:#555;font-size:13px;white-space:pre-line">' . $e($extra) . '</p></div>';
 
 try {
@@ -209,10 +224,21 @@ try {
     $m->AltBody = $reglas['nombreWeb'] . ' · envío #' . $id . "\n\n" . $texto . "\n" . $extra;
     $m->send();
 } catch (Throwable $err) {
-    // La fila queda guardada (no se pierde el contacto), pero el usuario ve el error y la salida
-    // por WhatsApp: no se le dice «enviado» si nadie va a enterarse.
+    // La fila queda guardada (no se pierde el contacto) con correo = 0 para revisarla, pero el
+    // usuario ve el error y la salida por WhatsApp: no se le dice «enviado» si nadie va a enterarse.
     registrar('SMTP (envío #' . $id . '): ' . $err->getMessage());
+    marcarCorreo($pdo, $id, 0);
     responder(502, ['ok' => false, 'error' => 'correo']);
 }
+marcarCorreo($pdo, $id, 1);
 
 responder(200, ['ok' => true, 'id' => $id]);
+
+function marcarCorreo(PDO $pdo, int $id, int $estado): void
+{
+    try {
+        $pdo->prepare('UPDATE envios SET correo = ? WHERE id = ?')->execute([$estado, $id]);
+    } catch (Throwable $e) {
+        registrar('columna correo: ' . $e->getMessage());
+    }
+}
