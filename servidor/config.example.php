@@ -12,6 +12,10 @@ return [
         'usuario' => 'u000000000_webs',    // EJEMPLO
         'clave' => 'CAMBIAR',
     ],
+    // CORREO OPCIONAL. Mientras no haya cuenta de correo (el email del Hostinger es de pago), deja
+    // 'smtp' y 'aviso' tal cual o vacíos: los envíos se guardan en MySQL igualmente (correo = 0) y se
+    // ven en la web principal, /admin/solicitudes. Con SMTP real, además llega un aviso por correo;
+    // si ese SMTP falla, el envío sigue siendo correcto (queda correo = 0 y una línea en el log).
     'smtp' => [
         'host' => 'smtp.hostinger.com',
         'puerto' => 465,

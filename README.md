@@ -20,14 +20,15 @@ The site is static and lives in `public_html` of the hosting account (Hostinger:
 The partner form posts JSON to `/api/enviar.php`, shipped inside the build (`public/api/`):
 
 - saves every submission in the `envios` table of a MySQL database (`servidor/schema.sql`, import it
-  once in phpMyAdmin) and sends a notification email over SMTP (PHPMailer, bundled in
-  `api/lib/`, no Composer needed);
+  once in phpMyAdmin) and, if SMTP is configured, sends a notification email (PHPMailer, bundled in
+  `api/lib/`, no Composer needed). The email is optional: without SMTP the submission is still stored
+  (`correo = 0`) and counted as successful;
 - anti-spam: honeypot field, minimum time on page and a per-IP limit stored as an HMAC (the IP is
   never stored in clear);
 - server-side validation with the same rules as the browser (`api/reglas.json`, generated at build
   time from the form data);
-- if saving or emailing fails, it answers an error and the page shows the WhatsApp fallback; the form
-  only reports success when the server confirms it.
+- only if the row cannot be saved it answers an error and the page shows the WhatsApp fallback; the
+  form only reports success when the server confirms the save.
 
 **Secrets never go in this repository or in the zip.** Copy `servidor/config.example.php` to
 `domains/karayatravelagents.com/config.php` (next to `public_html`, not inside it) and fill in the database and SMTP

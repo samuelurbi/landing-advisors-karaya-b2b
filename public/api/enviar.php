@@ -7,8 +7,10 @@
 // Flujo: POST JSON → antispam (campo trampa, tiempo mínimo, límite por IP con hash) → validación
 // igual que en el cliente → fila en la tabla `envios` (MySQL, schema.sql: la misma tabla que la web
 // principal, karayapuntacana.com) → aviso por SMTP → `correo` = 1 (avisado) o 0 (falló el aviso).
-// Si falla el guardado o el aviso, responde error: la web enseña la salida por WhatsApp; nunca
-// un «enviado» falso.
+// Solo es error (la web enseña la salida por WhatsApp) cuando NO se guarda la fila. El correo es
+// opcional (20/10: karayapuntacana.com aún no tiene email contratado): sin SMTP en config.php o con
+// un SMTP que falla, el envío es correcto si la fila se guardó, con `correo` = 0 y una línea en el
+// log de PHP. Las solicitudes se ven en la web principal, /admin/solicitudes.
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
@@ -182,32 +184,45 @@ try {
     responder(500, ['ok' => false, 'error' => 'servidor']);
 }
 
-// --- Aviso por correo (SMTP del correo de Hostinger) -------------------------------------------
-require __DIR__ . '/lib/PHPMailer/Exception.php';
-require __DIR__ . '/lib/PHPMailer/PHPMailer.php';
-require __DIR__ . '/lib/PHPMailer/SMTP.php';
+// --- Aviso por correo (opcional) ---------------------------------------------------------------
+// ¿Hay SMTP de verdad? Vacío o con los valores de ejemplo de config.example.php = no hay.
+$s = is_array($cfg['smtp'] ?? null) ? $cfg['smtp'] : [];
+$aviso = is_array($cfg['aviso'] ?? null) ? $cfg['aviso'] : [];
+$real = static fn($v) => is_string($v) && trim($v) !== '' && stripos($v, 'ejemplo.com') === false && stripos($v, 'CAMBIAR') === false;
+$para = array_values(array_filter((array) ($aviso['para'] ?? []), $real));
+$noEjemplo = static fn($v) => !is_string($v) || ($real($v) || trim($v) === '');   // usuario/clave pueden ir vacíos (SMTP sin login), no de ejemplo
+$smtpConfigurado = $real($s['host'] ?? '') && $noEjemplo($s['usuario'] ?? '') && $noEjemplo($s['clave'] ?? '') && $real($aviso['desde'] ?? '') && $para;
 
-$e = static fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
-$filas = '';
-$texto = '';
-foreach ($reglas['campos'] as $k => $r) {
-    if (!array_key_exists($k, $datos)) continue;
-    $v = $datos[$k];
-    $v = is_array($v) ? implode(', ', $v) : (is_bool($v) ? ($v ? 'Sí' : 'No') : $v);
-    $filas .= '<tr><td style="padding:6px 12px 6px 0;color:#555;vertical-align:top;white-space:nowrap">' . $e($r['etiqueta']) . '</td><td style="padding:6px 0;white-space:pre-wrap">' . $e($v) . '</td></tr>';
-    $texto .= $r['etiqueta'] . ': ' . $v . "\n";
+if (!$smtpConfigurado) {
+    // Sin correo: la fila ya está guardada (correo = 0 por defecto). Éxito.
+    marcarCorreo($pdo, $id, 0);
+    responder(200, ['ok' => true, 'id' => $id, 'correo' => false]);
 }
-$extra = 'Consentimiento: sí, ' . $ahora . "\n"
-    . ($origen !== '' ? 'Página: ' . $origen . "\n" : '')
-    . ($utm ? 'Origen: ' . urldecode(http_build_query($utm, '', ', ')) . "\n" : '');
-$html = '<div style="font:15px/1.5 Arial,sans-serif;color:#111"><p style="margin:0 0 12px"><b>' . $e($reglas['nombreWeb']) . '</b> · formulario «' . $e($reglas['formulario']) . '» · envío #' . $id . '</p><table style="border-collapse:collapse">' . $filas . '</table><p style="margin:16px 0 0;color:#555;font-size:13px;white-space:pre-line">' . $e($extra) . '</p></div>';
 
 try {
+    require __DIR__ . '/lib/PHPMailer/Exception.php';
+    require __DIR__ . '/lib/PHPMailer/PHPMailer.php';
+    require __DIR__ . '/lib/PHPMailer/SMTP.php';
+
+    $e = static fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+    $filas = '';
+    $texto = '';
+    foreach ($reglas['campos'] as $k => $r) {
+        if (!array_key_exists($k, $datos)) continue;
+        $v = $datos[$k];
+        $v = is_array($v) ? implode(', ', $v) : (is_bool($v) ? ($v ? 'Sí' : 'No') : $v);
+        $filas .= '<tr><td style="padding:6px 12px 6px 0;color:#555;vertical-align:top;white-space:nowrap">' . $e($r['etiqueta']) . '</td><td style="padding:6px 0;white-space:pre-wrap">' . $e($v) . '</td></tr>';
+        $texto .= $r['etiqueta'] . ': ' . $v . "\n";
+    }
+    $extra = 'Consentimiento: sí, ' . $ahora . "\n"
+        . ($origen !== '' ? 'Página: ' . $origen . "\n" : '')
+        . ($utm ? 'Origen: ' . urldecode(http_build_query($utm, '', ', ')) . "\n" : '');
+    $html = '<div style="font:15px/1.5 Arial,sans-serif;color:#111"><p style="margin:0 0 12px"><b>' . $e($reglas['nombreWeb']) . '</b> · formulario «' . $e($reglas['formulario']) . '» · envío #' . $id . '</p><table style="border-collapse:collapse">' . $filas . '</table><p style="margin:16px 0 0;color:#555;font-size:13px;white-space:pre-line">' . $e($extra) . '</p></div>';
+
     $m = new PHPMailer\PHPMailer\PHPMailer(true);
-    $s = $cfg['smtp'];
     $m->isSMTP();
     $m->Host = $s['host'];
-    $m->Port = (int) $s['puerto'];
+    $m->Port = (int) ($s['puerto'] ?? 465);
     $m->SMTPSecure = $s['seguridad'] ?? 'ssl';
     $m->SMTPAutoTLS = ($s['seguridad'] ?? 'ssl') !== '';
     $m->SMTPAuth = ($s['usuario'] ?? '') !== '';
@@ -215,8 +230,8 @@ try {
     $m->Password = $s['clave'] ?? '';
     $m->Timeout = 15;
     $m->CharSet = 'UTF-8';
-    $m->setFrom($cfg['aviso']['desde'], $cfg['aviso']['nombre'] ?? $reglas['nombreWeb']);
-    foreach ((array) $cfg['aviso']['para'] as $para) $m->addAddress($para);
+    $m->setFrom($aviso['desde'], $aviso['nombre'] ?? $reglas['nombreWeb']);
+    foreach ($para as $d) $m->addAddress($d);
     if (!empty($datos['email'])) $m->addReplyTo($datos['email'], $datos['nombre'] ?? '');
     $m->Subject = 'Nuevo contacto · ' . $reglas['nombreWeb'] . ' · ' . ($datos['empresa'] ?? $datos['nombre'] ?? '');
     $m->isHTML(true);
@@ -224,15 +239,14 @@ try {
     $m->AltBody = $reglas['nombreWeb'] . ' · envío #' . $id . "\n\n" . $texto . "\n" . $extra;
     $m->send();
 } catch (Throwable $err) {
-    // La fila queda guardada (no se pierde el contacto) con correo = 0 para revisarla, pero el
-    // usuario ve el error y la salida por WhatsApp: no se le dice «enviado» si nadie va a enterarse.
-    registrar('SMTP (envío #' . $id . '): ' . $err->getMessage());
+    // El contacto ya está guardado: es éxito para el visitante. correo = 0 para poder revisarlo.
+    registrar('SMTP (envío #' . $id . ', guardado igualmente): ' . $err->getMessage());
     marcarCorreo($pdo, $id, 0);
-    responder(502, ['ok' => false, 'error' => 'correo']);
+    responder(200, ['ok' => true, 'id' => $id, 'correo' => false]);
 }
 marcarCorreo($pdo, $id, 1);
 
-responder(200, ['ok' => true, 'id' => $id]);
+responder(200, ['ok' => true, 'id' => $id, 'correo' => true]);
 
 function marcarCorreo(PDO $pdo, int $id, int $estado): void
 {
