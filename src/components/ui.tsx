@@ -48,7 +48,8 @@ export function BotonEnlace({ href, nivel, tamano, origen, flecha, children, cla
       {...(externo ? { target: '_blank', rel: 'noopener' } : {})}
       className={clsx(clasesBoton(nivel, tamano), className)}
       onClick={() => {
-        emitir('cta_click', { destino: href, origen });
+        if (href === '#join') emitir('partner_cta_click', { location: origen });
+        else emitir('nav_cta_click', { location: origen, destination: href });
         onClick?.();
       }}
     >

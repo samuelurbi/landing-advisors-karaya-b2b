@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { medio } from '../lib/medios';
 
 // V03 aprobada: barras en L, pared vegetal, DJ, mural superior y escalera separada.
 // Fuente: visor-barco/exports/karaya-barco-v03.glb del worktree karaya-hero-mar-3d (25 MB).
@@ -9,7 +10,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 //   npx @gltf-transform/cli@4 optimize karaya-barco-v03.glb public/modelos/karaya-v03.min.glb \
 //     --compress meshopt --texture-compress webp --texture-size 2048 --simplify false --palette false
 export async function crearBarco(signal) {
-  const respuesta = await fetch('/modelos/karaya-v03.min.glb', { signal });
+  const respuesta = await fetch(medio('/modelos/karaya-v03.min.glb'), { signal });
   if (!respuesta.ok) throw new Error(`No se pudo cargar el barco: ${respuesta.status}`);
   const datos = await respuesta.arrayBuffer();
   signal.throwIfAborted();

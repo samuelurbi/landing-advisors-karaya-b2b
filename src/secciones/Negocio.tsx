@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 import { Acento, Antetitulo } from '@/components/ui';
 import { useLuzBorde } from '@/lib/luzBorde';
+import { medio } from '@/lib/medios';
 import { entrada, entradaTarjeta, entradaTitulo, enVista, escalonado } from '@/lib/movimiento';
 import { marca, negocio } from '@/data/contenido';
 
@@ -22,8 +23,8 @@ function Objeto({ nombre, grande }: { nombre: string; grande?: boolean }) {
     <img
       aria-hidden
       alt=""
-      src={`/objetos/${nombre}-360.webp`}
-      srcSet={`/objetos/${nombre}-360.webp 360w, /objetos/${nombre}-640.webp 640w`}
+      src={medio(`/objetos/${nombre}-360.webp`)}
+      srcSet={medio(`/objetos/${nombre}-360.webp 360w, /objetos/${nombre}-640.webp 640w`)}
       sizes={grande ? '(min-width: 640px) 380px, 280px' : '(min-width: 640px) 220px, 180px'}
       width={360}
       height={360}

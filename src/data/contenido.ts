@@ -16,7 +16,9 @@ export const marca = {
     { etiqueta: 'Toll free', numero: '1-800-657-0016', tel: '+18006570016' },
     { etiqueta: 'Local', numero: '+1-809-803-9529', tel: '+18098039529' },
   ],
-  web: 'https://karayapartyboat.com',
+  web: 'https://karayapuntacana.com', // web principal (Marketing, 20/10)
+  // WhatsApp de la web principal (karaya-partyboat): solo como salida si falla el formulario.
+  whatsapp: '18098039529',
 };
 
 export const nav = [
@@ -332,7 +334,9 @@ export const registro = {
     intereses: 'Areas of interest',
     mensaje: 'Anything we should know?',
     opcional: '(optional)',
-    consentimiento: 'I agree that Karaya may contact me about this partnership inquiry.',
+    // Dice exactamente a qué se consiente (Marketing, 20/10). Borrador hasta el texto legal definitivo.
+    consentimiento: 'I agree that Karaya Punta Cana may store the details I submit in this form and use them to contact me by email or phone about this partnership inquiry. I can withdraw my consent at any time.',
+    politica: 'Read our Privacy Policy',
   },
   seleccionar: 'Select',
   paises: ['United States', 'Canada', 'United Kingdom', 'Mexico', 'Dominican Republic', 'Other'],
@@ -348,7 +352,9 @@ export const registro = {
     tipo: 'Please choose your business type.',
     consentimiento: 'Please confirm we may contact you.',
     resumen: 'Please check the fields marked below.',
-    envio: "We couldn't send your request. Please try again or write to us by email.",
+    envio: "We couldn't send your request. Please try again, or reach us directly:",
+    whatsapp: 'Message us on WhatsApp',
+    whatsappTexto: "Hi! I tried to send the partner form on karayatravelagents.com and it didn't go through.",
   },
   hecho: { titulo: 'Thanks, the conversation has started.', texto: 'Our team will review your details and reply by email.', otro: 'Send another' },
   privacidad: 'Consent text and privacy policy are pending legal review.',

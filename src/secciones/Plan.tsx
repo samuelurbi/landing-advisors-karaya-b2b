@@ -48,7 +48,7 @@ export function Plan() {
   };
   const elegir = (k: Clave, valor: string) => {
     setB((x) => ({ ...x, [k]: valor }));
-    emitir('planner_change', { campo: k, valor });
+    emitir('planner_change', { field: k, value: valor });
     const i = CLAVES.indexOf(k);
     // Siguiente pregunta sin respuesta (o el final si ya están todas).
     const siguiente = CLAVES.findIndex((c, j) => j > i && !b[c]);
@@ -57,7 +57,7 @@ export function Plan() {
   const enviar = () => {
     if (!completo) return;
     window.dispatchEvent(new CustomEvent<Brief>('ky-brief', { detail: b }));
-    emitir('planner_send', { tipo: b.tipo, invitados: b.invitados, formato: b.formato, mes: b.mes, hispaniola: b.hispaniola });
+    emitir('planner_send', { event_type: b.tipo, guests: b.invitados, format: b.formato, month: b.mes, hispaniola: b.hispaniola });
     document.getElementById('join')?.scrollIntoView({ behavior: quieto ? 'auto' : 'smooth' });
   };
   const reiniciar = () => {
@@ -170,7 +170,7 @@ export function Plan() {
                     </p>
                     <p className="mt-3 max-w-[46ch] text-[16px] text-texto-2">{plan.listo.texto}</p>
                     <label className="mt-6 flex min-h-[64px] cursor-pointer items-center gap-4 rounded-[20px] border border-texto/15 bg-texto/[0.04] px-4 py-3 transition-colors hover:border-texto/40 has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-mar">
-                      <input type="checkbox" checked={b.hispaniola} onChange={(e) => { setB((x) => ({ ...x, hispaniola: e.target.checked })); emitir('planner_change', { campo: 'hispaniola', valor: e.target.checked }); }} className="sr-only" />
+                      <input type="checkbox" checked={b.hispaniola} onChange={(e) => { setB((x) => ({ ...x, hispaniola: e.target.checked })); emitir('planner_change', { field: 'hispaniola', value: e.target.checked }); }} className="sr-only" />
                       <span aria-hidden className={clsx('flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors', b.hispaniola ? 'bg-sol text-noche' : 'bg-texto/10 text-texto')}>
                         {b.hispaniola ? <Check size={18} strokeWidth={3} /> : <Plus size={18} />}
                       </span>

@@ -14,7 +14,8 @@ import { AnimatePresence, animate, motion, useInView, useMotionValue, useReduced
 import { clsx } from 'clsx';
 import { Pause, Play } from 'lucide-react';
 import { Acento, Antetitulo } from '@/components/ui';
-import { emitir } from '@/lib/analitica';
+import { emitir, vistaSeccion } from '@/lib/analitica';
+import { hayMedio, medio } from '@/lib/medios';
 import { entrada, entradaTitulo, enVista } from '@/lib/movimiento';
 import { velada as v } from '@/data/contenido';
 
@@ -28,11 +29,11 @@ const grupo = (k: number) => v.paradas.filter((p) => p.hora === v.luces[k].etiqu
 // Una luz en <picture>: AVIF con WebP de respaldo, tres anchos. Las tres se cargan desde el principio
 // (apiladas) para que el fundido nunca enseñe un hueco.
 function FotoLuz({ luz, sizes }: { luz: string; sizes: string }) {
-  const set = (ext: string) => ANCHOS.map((w) => `/img/velada/karaya-velada-${luz}-${w}.${ext} ${w}w`).join(', ');
+  const set = (ext: string) => medio(ANCHOS.map((w) => `/img/velada/karaya-velada-${luz}-${w}.${ext} ${w}w`).join(', '));
   return (
     <picture>
-      <source type="image/avif" srcSet={set('avif')} sizes={sizes} />
-      <img src={`/img/velada/karaya-velada-${luz}-1600.webp`} srcSet={set('webp')} sizes={sizes} width={2688} height={1792} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '50% 55%' }} />
+      {hayMedio(`/img/velada/karaya-velada-${luz}-960.avif`) ? <source type="image/avif" srcSet={set('avif')} sizes={sizes} /> : null}
+      <img src={medio(`/img/velada/karaya-velada-${luz}-1600.webp`)} srcSet={set('webp')} sizes={sizes} width={2688} height={1792} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '50% 55%' }} />
     </picture>
   );
 }
@@ -143,8 +144,12 @@ export function Velada() {
     progreso.set(0);
     setActual(k);
     setVuelta((x) => x + 1);
-    emitir('evening_light', { luz: v.luces[k].id, origen: 'pestana' });
+    emitir('evening_light', { light: v.luces[k].id, source: 'tab' });
   };
+  // section_view luz-<id>: cada luz que llega a verse (en el bucle o elegida a mano).
+  useEffect(() => {
+    if (visible) vistaSeccion(`luz-${v.luces[actual].id}`);
+  }, [actual, visible]);
 
   const luz = v.luces[actual];
   return (

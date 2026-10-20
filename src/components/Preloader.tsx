@@ -100,7 +100,7 @@ export function Preloader() {
 
   if (!visible) return null;
   return (
-    <div className="pointer-events-none fixed inset-0 z-[100]" role="status" aria-live="polite">
+    <div data-preloader className="pointer-events-none fixed inset-0 z-[100]" role="status" aria-live="polite">
       <span className="sr-only">Loading Karaya</span>
       {/* Fondo con hueco: la máscara deja ver la web por un círculo que crece desde el centro. */}
       <motion.div

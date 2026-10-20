@@ -7,6 +7,7 @@ import { Antetitulo } from '@/components/ui';
 import { CabeceraSeccion } from '@/components/bloques';
 import { entrada, entradaTarjeta, enVista, escalonado } from '@/lib/movimiento';
 import { condiciones } from '@/data/contenido';
+import { emitir } from '@/lib/analitica';
 
 const ICONOS = { deposito: Wallet, cancelacion: Undo2, clima: CloudSun, bordo: Ship } as const;
 
@@ -42,7 +43,7 @@ export function Condiciones() {
           })}
         </motion.ul>
 
-        <motion.details variants={entrada} {...enVista} className="group mt-4 rounded-[24px] ring-1 ring-inset ring-texto/10 lg:mt-5">
+        <motion.details variants={entrada} {...enVista} onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && emitir('terms_open')} className="group mt-4 rounded-[24px] ring-1 ring-inset ring-texto/10 lg:mt-5">
           <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-3 rounded-[24px] px-6 py-4 text-[16px] font-semibold text-texto hover:text-sol focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-mar [&::-webkit-details-marker]:hidden">
             <FileText size={19} strokeWidth={1.75} aria-hidden className="shrink-0 text-sol" />
             <span className="flex-1">{condiciones.desplegable}</span>

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5320 --strictPort",
-    "build": "tsc --noEmit && vite build && node scripts/prerender.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/prerender.mjs && node scripts/legales.mjs && node scripts/api.mjs",
+    "zip": "node scripts/zip-hostinger.mjs",
     "preview": "vite preview --port 5321 --strictPort",
     "typecheck": "tsc --noEmit",
     "qa": "node scripts/qa.mjs",

@@ -13,7 +13,10 @@ import { emitir } from '@/lib/analitica';
 import { enviar, envioSimulado } from '@/lib/formulario';
 import { entrada, entradaTarjeta, entradaTitulo, enVista } from '@/lib/movimiento';
 import { textoBrief, type Brief } from '@/secciones/Plan';
-import { plan, registro as r } from '@/data/contenido';
+import { marca, plan, registro as r } from '@/data/contenido';
+
+// Nombres de campo en inglés para form_error (igual que Hispaniola).
+const CAMPO_EN: Record<string, string> = { nombre: 'name', empresa: 'company', email: 'email', pais: 'country', tipo: 'business_type', consentimiento: 'consent' };
 
 const vacio = { nombre: '', empresa: '', email: '', telefono: '', pais: '', tipo: '', intereses: [] as string[], mensaje: '', consentimiento: false, web: '' };
 type Datos = typeof vacio;
@@ -80,6 +83,8 @@ export function Registro() {
   const [tocado, setTocado] = useState(false);
   const [estado, setEstado] = useState<'editando' | 'enviando' | 'enviado' | 'error'>('editando');
   const empezado = useRef(false);
+  // Antispam: el servidor rechaza envíos hechos a menos de 3 s de ver el formulario.
+  const visto = useRef(Date.now());
   const tarjeta = useRef<HTMLDivElement>(null);
   const idConsent = useId();
 
@@ -124,7 +129,7 @@ export function Registro() {
     setTocado(true);
     const fallos = Object.entries(errores).filter(([, v]) => v);
     if (fallos.length) {
-      emitir('form_error', { campos: fallos.map(([k]) => k) });
+      emitir('form_error', { fields: fallos.map(([k]) => CAMPO_EN[k] ?? k).join(',') });
       requestAnimationFrame(() => tarjeta.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
       return;
     }
@@ -134,7 +139,7 @@ export function Registro() {
       return;
     }
     setEstado('enviando');
-    const datos = {
+    const campos = {
       nombre: d.nombre.trim(),
       empresa: d.empresa.trim(),
       email: d.email.trim(),
@@ -143,13 +148,12 @@ export function Registro() {
       tipo: d.tipo,
       intereses: d.intereses,
       mensaje: d.mensaje.trim(),
-      consentimiento: d.consentimiento,
       brief: brief ? textoBrief(brief) : '',
     };
-    const res = await enviar({ modo: 'registro', marca: 'karaya', datos });
+    const res = await enviar({ campos, consentimiento: d.consentimiento, hp: d.web, ms: Date.now() - visto.current });
     if (res.ok) {
-      // Sin nombre ni email en la analítica.
-      emitir('form_submit', { simulado: envioSimulado, pais: d.pais, tipo: d.tipo, intereses: d.intereses, brief: !!brief });
+      // Solo cuando el servidor confirma. Sin nombre ni email en la analítica.
+      emitir('form_submit_success', { business_type: d.tipo, country: d.pais, interests: d.intereses.join(','), brief: !!brief, ...(envioSimulado ? { simulated: true } : {}) });
       setEstado('enviado');
     } else setEstado('error');
   };
@@ -192,6 +196,8 @@ export function Registro() {
               </motion.div>
             ) : (
               <motion.form
+                action="/api/enviar.php"
+                method="post"
                 key="form"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -275,7 +281,14 @@ export function Registro() {
 
                 <div className="sm:col-span-2">
                   <Casilla name="consent" marcada={d.consentimiento} onChange={(v) => cambiar('consentimiento', v)} invalida={!!ver('consentimiento')} describe={ver('consentimiento') ? idConsent : undefined}>
-                    <span className="text-[14px] text-noche/75">{r.campos.consentimiento}</span>
+                    <span className="text-[14px] text-noche/75">
+                      {r.campos.consentimiento}{' '}
+                      {/* En pestaña nueva: no se pierde lo escrito en el formulario. */}
+                      <a href="/privacy/" target="_blank" rel="noopener" className="font-semibold text-noche underline underline-offset-4">
+                        {r.campos.politica}
+                      </a>
+                      .
+                    </span>
                   </Casilla>
                   {ver('consentimiento') ? (
                     <p id={idConsent} className="mt-1 text-[14px] font-medium text-[#b42318]" role="alert">
@@ -291,7 +304,12 @@ export function Registro() {
                   </Boton>
                   {estado === 'error' ? (
                     <p className="text-[14px] font-medium text-[#b42318]" role="alert">
-                      {r.errores.envio}
+                      {r.errores.envio}{' '}
+                      {/* Salida si falla el guardado o el aviso: nunca un «enviado» falso. */}
+                      <a href={`https://wa.me/${marca.whatsapp}?text=${encodeURIComponent(r.errores.whatsappTexto)}`} target="_blank" rel="noopener" className="font-semibold text-noche underline underline-offset-4">
+                        {r.errores.whatsapp}
+                      </a>{' '}
+                      · <a href={`mailto:${marca.email}`} className="font-semibold text-noche underline underline-offset-4">{marca.email}</a>
                     </p>
                   ) : null}
                 </div>

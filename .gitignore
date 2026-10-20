@@ -10,3 +10,4 @@ dist
 .vercel
 qa-capturas
 _gen
+config.php

@@ -16,7 +16,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { clsx } from 'clsx';
 import { Box, Pause, Play } from 'lucide-react';
 import { Acento, Antetitulo, Foto } from '@/components/ui';
-import { emitir } from '@/lib/analitica';
+import { emitir, vistaSeccion } from '@/lib/analitica';
 import { gpuSuficiente } from '@/lib/gpu';
 import { entrada, entradaTitulo, enVista } from '@/lib/movimiento';
 import { barco } from '@/data/contenido';
@@ -147,12 +147,13 @@ export function Recorrido() {
   const ir = (zona: ZonaVisor) => {
     setActiva(zona);
     visor.current?.ir(zona, performance.now() / 1000, quieto ? 0.001 : 1.4);
+    vistaSeccion(`zona-${zona}`);
   };
   // Elección del usuario: corta el recorrido automático y se mide (el recorrido no se mide).
   const elegir = (zona: ZonaVisor) => {
     setTour(false);
     ir(zona);
-    emitir('boat_point_view', { zona });
+    emitir('boat_point_view', { zone: zona });
   };
 
   // Recorrido automático: un punto cada PASO_TOUR.

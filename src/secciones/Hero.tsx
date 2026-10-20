@@ -72,7 +72,7 @@ export function Hero() {
   const elegir = (k: number) => {
     setAuto(false);
     setI(k);
-    emitir('moment_select', { momento: hero.momentos[k].id, origen: 'hero' });
+    emitir('moment_select', { moment: hero.momentos[k].id, source: 'hero' });
   };
 
   const aparece = (retardo: number) => ({

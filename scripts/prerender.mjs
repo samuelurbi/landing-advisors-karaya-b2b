@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'vite';
 
-const SITIO = (process.env.SITIO || 'https://landing-advisors-karaya-b2b.vercel.app').replace(/\/$/, '');
+const SITIO = (process.env.SITIO || 'https://karayatravelagents.com').replace(/\/$/, '');
 const INDEXAR = process.env.INDEXAR === '1';
 
 const vite = await createServer({
@@ -42,11 +42,14 @@ const ld = {
   '@graph': [
     {
       '@type': 'Organization',
-      '@id': `${c.marca.web}/#organization`,
-      name: c.marca.nombre,
-      url: `${c.marca.web}/`,
+      // La organización de esta landing vive en su dominio (Marketing, 20/10) y cuelga de la web
+      // principal, karayapuntacana.com (no karayapartyboat.com).
+      '@id': `${SITIO}/#organization`,
+      name: 'Karaya Partners',
+      url: `${SITIO}/`,
       logo: `${SITIO}/logo-karaya.svg`,
       email: c.marca.email,
+      parentOrganization: { '@type': 'Organization', '@id': `${c.marca.web}/#organization`, name: c.marca.nombre, url: `${c.marca.web}/` },
       // Única red verificada en el código de la web de Karaya (contenido.ts: instagram).
       sameAs: ['https://www.instagram.com/karayapuntacana/'],
     },
@@ -58,7 +61,7 @@ const ld = {
       description: DESCRIPCION,
       inLanguage: 'en',
       primaryImageOfPage: IMAGEN,
-      publisher: { '@id': `${c.marca.web}/#organization` },
+      publisher: { '@id': `${SITIO}/#organization` },
     },
   ],
 };

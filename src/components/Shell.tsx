@@ -9,6 +9,8 @@ import { ArrowUpRight, Mail, Menu, Phone, X } from 'lucide-react';
 import { Logo, PalabraKaraya } from '@/components/marca';
 import { BotonEnlace } from '@/components/ui';
 import { listo, usePreloader } from '@/lib/preloader';
+import { medio } from '@/lib/medios';
+import { vigilarSecciones } from '@/lib/analitica';
 import { cta, marca, nav, pie } from '@/data/contenido';
 
 const enlaceNav = (activo: boolean) =>
@@ -160,8 +162,8 @@ function Cabecera() {
 function Pie() {
   return (
     <footer className="relative overflow-hidden bg-hondo text-texto">
-      <img aria-hidden src="/img/karaya-esquina-izquierda.webp" alt="" width={900} height={675} loading="lazy" decoding="async" className="pointer-events-none absolute bottom-0 left-0 w-[46%] max-w-[460px] select-none md:w-[27%]" />
-      <img aria-hidden src="/img/karaya-esquina-derecha.webp" alt="" width={900} height={675} loading="lazy" decoding="async" className="pointer-events-none absolute bottom-0 right-0 w-[46%] max-w-[460px] select-none md:w-[27%]" />
+      <img aria-hidden src={medio('/img/karaya-esquina-izquierda.webp')} alt="" width={900} height={675} loading="lazy" decoding="async" className="pointer-events-none absolute bottom-0 left-0 w-[46%] max-w-[460px] select-none md:w-[27%]" />
+      <img aria-hidden src={medio('/img/karaya-esquina-derecha.webp')} alt="" width={900} height={675} loading="lazy" decoding="async" className="pointer-events-none absolute bottom-0 right-0 w-[46%] max-w-[460px] select-none md:w-[27%]" />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 flex translate-y-[58%] justify-center opacity-[0.05]">
         <PalabraKaraya className="w-[110%] max-w-none md:w-[62%]" />
       </div>
@@ -198,6 +200,9 @@ function Pie() {
       <div className="relative pb-[120px] md:pb-0">
         <div className="contenedor flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-texto/10 py-5 text-[14px] text-texto/60 md:mx-auto md:max-w-[46%] md:px-0">
           <span>© {new Date().getFullYear()} {marca.lugar}</span>
+          <a href="/privacy/" className="flex min-h-[44px] items-center hover:text-texto">Privacy Policy</a>
+          <a href="/terms/" className="flex min-h-[44px] items-center hover:text-texto">Terms of Use</a>
+          <button type="button" data-cookies-abrir className="flex min-h-[44px] items-center hover:text-texto">Cookie settings</button>
         </div>
       </div>
     </footer>
@@ -220,6 +225,7 @@ function Revelado({ children }: { children: ReactNode }) {
 
 export function Shell({ children, cierre }: { children: ReactNode; cierre?: ReactNode }) {
   useEffect(() => listo('pagina'), []);
+  useEffect(() => vigilarSecciones(), []);
   return (
     <div id="top" className="isolate flex min-h-screen flex-col">
       <div aria-hidden className="grano" />

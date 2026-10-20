@@ -5,6 +5,7 @@
 import { useId, useState } from 'react';
 import { clsx } from 'clsx';
 import { isotipo, palabra, trazos, viewBox } from '@/components/logoTrazos';
+import { medio } from '@/lib/medios';
 
 import imagotipoBlanco from '@/assets/marca/imagotipo-horizontal-blanco.svg';
 import isotipoColor from '@/assets/marca/isotipo-color.svg';
@@ -79,7 +80,7 @@ export function Mural({ nombre, clase, prioridad, ancho = 900, alto = 1200 }: { 
   return (
     <img
       aria-hidden
-      src={`/img/karaya-${nombre}.webp`}
+      src={medio(`/img/karaya-${nombre}.webp`)}
       alt=""
       width={ancho}
       height={alto}
@@ -126,7 +127,7 @@ export function SombraPalma({ variante = 2, lado = 'derecha', className, intensi
     >
       <img
         alt=""
-        src={`/img/sombra-palma-0${variante}.webp`}
+        src={medio(`/img/sombra-palma-0${variante}.webp`)}
         loading="lazy"
         decoding="async"
         width={1600}
